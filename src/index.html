@@ -1,16 +1,38 @@
-<div class="titlebar-dots">
-    <button class="close" aria-label="Close" onclick="remote.getCurrentWindow().close();">
-        <span class="dot red"></span>
-    </button>
-    <button class="minimize" aria-label="Minimize" onclick="remote.getCurrentWindow().minimize();">
-        <span class="dot yellow"></span>
-    </button>
-    <button class="maximize" aria-label="Maximize" onclick="remote.getCurrentWindow().maximize();">
-        <span class="dot green"></span>
-    </button>
-</div>
-
-<script>
-    const { remote } = require('electron');
-    const { BrowserWindow } = remote;
-</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My App</title>
+    <style>
+        .traffic-light {
+            display: flex;
+            justify-content: space-between;
+            width: 60px;
+            margin: 10px;
+        }
+        .button {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .close {
+            background-color: red;
+        }
+        .minimize {
+            background-color: yellow;
+        }
+        .maximize {
+            background-color: green;
+        }
+    </style>
+</head>
+<body>
+    <div class="traffic-light">
+        <div class="button close" title="Close"></div>
+        <div class="button minimize" title="Minimize"></div>
+        <div class="button maximize" title="Maximize"></div>
+    </div>
+</body>
+</html>
