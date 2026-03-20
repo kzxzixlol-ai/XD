@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Climb Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-base: #1a1a1e;
+    --bg-sidebar: #161618;
+    --bg-panel: #222226;
+    --bg-card: #2a2a2f;
+    --bg-elevated: #313138;
+    --bg-input: #1e1e22;
+    --border: rgba(255,255,255,0.07);
+    --border-light: rgba(255,255,255,0.12);
+    --text-primary: #f0f0f5;
+    --text-secondary: #8e8e99;
+    --text-muted: #5a5a66;
+    --accent: #5e8ef7;
+    --accent-soft: rgba(94,142,247,0.15);
+    --accent-hover: #7aa3ff;
+    --green: #34d399;
+    --green-soft: rgba(52,211,153,0.12);
+    --red: #f87171;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 22px;
+    --shadow-lg: 0 20px 60px rgba(0,0,0,0.5);
+    --font: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+  body {
+    font-family: var(--font);
+    background: var(--bg-base);
+    color: var(--text-primary);
+    height: 100vh; overflow: hidden;
+    display: flex; flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+  }
+  .window {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    height: 100vh;
+  }
+  .titlebar {
+    height: 44px; background: var(--bg-sidebar);
+    display: flex; align-items: center; padding: 0 20px; gap: 8px;
+    border-bottom: 1px solid var(--border); position: relative;
+    -webkit-app-region: drag; flex-shrink: 0;
+  }
+  .titlebar button, .titlebar-dots { -webkit-app-region: no-drag; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .dot-r { background: #ff5f57; cursor: pointer; } .dot-y { background: #ffbd2e; cursor: pointer; } .dot-g { background: #28c941; cursor: pointer; }
+  .titlebar-title {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    font-size: 13px; color: var(--text-secondary); font-weight: 500; letter-spacing: 0.01em;
+  }
+  .layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 180px; flex-shrink: 0; background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    padding: 12px 0; display: flex; flex-direction: column;
+  }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px; margin: 0 8px; border-radius: var(--radius-sm);
+    font-size: 13.5px; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .sidebar-item:hover { background: var(--bg-card); color: var(--text-primary); }
+  .sidebar-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+  .sidebar-item .si-icon { font-size: 11px; width: 14px; text-align: center; flex-shrink: 0; }
+
+  /* Main */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .main-header {
+    padding: 20px 28px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0;
+  }
+  .main-title { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-primary); }
+  .main-sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+  .header-btns { display: flex; gap: 8px; }
+  .hbtn {
+    font-size: 13px; padding: 8px 16px; border-radius: var(--radius-md);
+    border: 1px solid rgba(94,142,247,0.2);
+    background: var(--accent-soft); color: var(--accent);
+    cursor: pointer; transition: all 0.15s; font-family: var(--font); font-weight: 500;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .hbtn:hover { background: rgba(94,142,247,0.25); transform: translateY(-1px); }
+
+  /* Stats bar */
+  .stats-bar {
+    display: grid; grid-template-columns: repeat(4,1fr);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px; flex-shrink: 0;
+  }
+  .stat-item { padding: 12px 0; border-right: 1px solid var(--border); padding-right: 16px; margin-right: 16px; }
+  .stat-item:last-child { border-right: none; padding-right: 0; }
+  .stat-label { font-size: 10.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; font-family: var(--font-mono); }
+  .stat-val { font-size: 18px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.02em; }
+  .stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-family: var(--font-mono); }
+
+  /* Tab contents */
+  .tab-content { flex: 1; overflow-y: auto; height: 100%; }
+
+  /* Log form */
+  .log-form {
+    padding: 16px 28px; display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border); background: var(--bg-panel);
+  }
+  .fg { display: flex; flex-direction: column; gap: 4px; }
+  .fg label { font-size: 10.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--font-mono); }
+  input, select {
+    background: var(--bg-input); border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font); font-size: 13px;
+    padding: 7px 10px; outline: none; transition: border-color 0.15s;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--text-muted); }
+  select option { background: var(--bg-card); }
+  .add-btn {
+    background: var(--accent-soft); border: 1px solid rgba(94,142,247,0.2);
+    border-radius: var(--radius-md); color: var(--accent);
+    font-family: var(--font); font-size: 13px; font-weight: 500;
+    padding: 8px 18px; cursor: pointer; transition: all 0.15s;
+  }
+  .add-btn:hover { background: rgba(94,142,247,0.25); transform: translateY(-1px); }
+  .add-btn:active { transform: scale(0.97); }
+
+  /* Game list */
+  .col-header {
+    display: grid;
+    grid-template-columns: 34px 70px 60px 108px 95px 1fr 86px 70px 28px;
+    padding: 5px 28px; border-bottom: 1px solid var(--border);
+    font-size: 10.5px; font-weight: 600; color: var(--text-muted);
+    letter-spacing: 0.06em; text-transform: uppercase; font-family: var(--font-mono);
+  }
+  .game-row {
+    display: grid;
+    grid-template-columns: 34px 70px 60px 108px 95px 1fr 86px 70px 28px;
+    padding: 0 28px; height: 38px; align-items: center;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px; color: var(--text-secondary);
+    transition: all 0.12s;
+  }
+  .game-row:hover { background: var(--bg-card); color: var(--text-primary); }
+  .game-row.row-win { background: var(--green-soft); }
+  .game-row.row-win:hover { background: rgba(52,211,153,0.18); }
+  .game-row.row-loss { background: rgba(248,113,113,0.08); }
+  .game-row.row-loss:hover { background: rgba(248,113,113,0.15); }
+  
+  .num { color: var(--text-muted); font-size: 12px; text-align: center; font-family: var(--font-mono); }
+  .c-win { color: var(--green); } .c-loss { color: var(--red); }
+  .c-lp { color: var(--accent); } .c-mut { color: var(--text-muted); font-size: 12px; font-family: var(--font-mono); }
+  .badge {
+    display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 4px;
+    font-weight: 500; letter-spacing: 0.02em; text-transform: uppercase;
+  }
+  .b-win { background: var(--green-soft); color: var(--green); }
+  .b-loss { background: rgba(248,113,113,0.12); color: var(--red); }
+  .rank-pill {
+    font-size: 10px; padding: 2px 7px; border-radius: var(--radius-sm); font-weight: 500;
+    font-family: var(--font-mono); background: var(--bg-elevated); color: var(--text-secondary);
+  }
+  .del-btn {
+    background: none; border: none; color: transparent;
+    cursor: pointer; font-size: 14px;
+    transition: color 0.15s; padding: 2px 4px; border-radius: var(--radius-sm);
+  }
+  .game-row:hover .del-btn { color: var(--text-muted); }
+  .del-btn:hover { color: var(--red) !important; }
+  .empty-row { padding: 2.5rem 28px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+  /* Chart */
+  .chart-wrap { padding: 20px 22px; height: 300px; }
+
+  /* Daily */
+  .daily-row {
+    display: grid; grid-template-columns: 130px 58px 48px 48px 68px 78px;
+    padding: 0 28px; height: 36px; align-items: center;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px; color: var(--text-secondary); transition: background 0.12s; font-family: var(--font-mono);
+  }
+  .daily-row:hover { background: var(--bg-card); }
+  .daily-row.header { font-size: 10.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; height: 32px; }
+
+
+  /* Footer */
+  .footer { padding: 8px 28px; display: flex; gap: 14px; border-top: 1px solid var(--border); background: var(--bg-panel); }
+  .footer a { font-size: 11px; color: var(--text-muted); cursor: pointer; font-family: var(--font-mono); }
+  .footer a:hover { color: var(--text-primary); }
+
+  /* Hide number input spinners */
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+
+  /* Note tooltip */
+  .note-cell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; max-width: 160px; }
+  #note-tooltip {
+    position: fixed; display: none;
+    background: var(--bg-elevated); border: 1px solid var(--border-light);
+    border-radius: var(--radius-md); padding: 8px 12px;
+    font-size: 12.5px; color: var(--text-primary); white-space: normal;
+    max-width: 320px; min-width: 100px; word-break: break-word;
+    box-shadow: var(--shadow-md); z-index: 999; line-height: 1.5;
+    pointer-events: none; font-family: var(--font);
+  }
+  /* Champion autocomplete */
+  .ac-wrap { position: relative; }
+  .ac-list {
+    position: absolute; top: calc(100% + 4px); left: 0;
+    width: 190px; background: var(--bg-card);
+    border: 1px solid var(--border-light); border-radius: var(--radius-md);
+    z-index: 100; overflow: hidden; display: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  }
+  .ac-list.open { display: block; }
+  .ac-item {
+    padding: 8px 12px; font-size: 13px; color: var(--text-secondary);
+    cursor: pointer; transition: background 0.1s;
+  }
+  .ac-item:hover, .ac-item.focused { background: var(--accent-soft); color: var(--accent); }
+
+
+  /* Settings modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    z-index: 200; display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--bg-panel); border-radius: var(--radius-xl);
+    border: 1px solid var(--border-light);
+    width: 480px; max-width: 90vw;
+    box-shadow: var(--shadow-lg); overflow: hidden;
+    transform: scale(0.95) translateY(10px);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .modal-overlay.open .modal { transform: scale(1) translateY(0); }
+  .modal-header {
+    padding: 22px 24px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-title { font-size: 17px; font-weight: 600; color: var(--text-primary); }
+  .modal-close {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--bg-elevated); border: none; cursor: pointer;
+    color: var(--text-secondary); display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .modal-close:hover { background: var(--red); color: #fff; }
+  .modal-close svg { width: 12px; height: 12px; }
+  .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 10px; }
+  .modal-section-label {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.07em;
+    margin-bottom: 2px;
+  }
+  .modal-btn {
+    width: 100%; text-align: left; padding: 10px 14px;
+    background: var(--bg-elevated); border: 1px solid var(--border-light);
+    border-radius: var(--radius-md); color: var(--text-secondary);
+    font-family: var(--font); font-size: 13px; cursor: pointer;
+    transition: all 0.15s; display: flex; align-items: center; gap: 10px;
+  }
+  .modal-btn:hover { background: var(--accent-soft); color: var(--accent); border-color: rgba(94,142,247,0.3); }
+  .modal-btn.danger { color: var(--text-secondary); }
+  .modal-btn.danger:hover { background: rgba(248,113,113,0.1); color: var(--red); border-color: rgba(248,113,113,0.25); }
+  .modal-btn svg { flex-shrink: 0; width: 14px; height: 14px; }
+  .hbtn.settings-trigger {
+    background: none; border: none; padding: 6px;
+    color: var(--text-secondary); border-radius: var(--radius-sm);
+  }
+  .hbtn.settings-trigger:hover { background: var(--bg-elevated); color: var(--text-primary); transform: none; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="window">
+  <div class="titlebar">
+    <div class="titlebar-dots" id="titlebar-dots"></div>
+    <span class="titlebar-title">zzz</span>
+    <button class="hbtn settings-trigger" onclick="openSettings()" title="Settings" style="margin-left:auto">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+
+  <div class="layout">
+    <!-- Sidebar: only navigation -->
+    <div class="sidebar">
+      <div class="sidebar-item active" id="si-log" onclick="switchTab('log')">
+        <span class="si-icon">+</span> Log game
+      </div>
+      <div class="sidebar-item" id="si-games" onclick="switchTab('games')">
+        <span class="si-icon">☰</span> Games
+      </div>
+      <div class="sidebar-item" id="si-chart" onclick="switchTab('chart')">
+        <span class="si-icon">↗</span> LP Graph
+      </div>
+      <div class="sidebar-item" id="si-daily" onclick="switchTab('daily')">
+        <span class="si-icon">≡</span> Daily
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Header -->
+      <div class="main-header">
+        <div>
+          <div class="main-title" id="view-title">Log game</div>
+          <div class="main-sub" id="view-sub">Add a new game to your climb</div>
+        </div>
+
+      </div>
+
+      <!-- Stats bar (always visible) -->
+      <div class="stats-bar">
+        <div class="stat-item"><div class="stat-label">Current Rank</div><div class="stat-val" style="color:var(--text-primary)"><span id="s-rank">Bronze IV</span> <span id="s-lp">0 LP</span></div><div class="stat-sub"><span id="s-wl-rank">0W 0L</span></div></div>
+        <div class="stat-item"><div class="stat-label">Overall W/R</div><div class="stat-val" id="s-wr">—</div><div class="stat-sub" id="s-wl">0W 0L</div></div>
+        <div class="stat-item"><div class="stat-label">Today W/R</div><div class="stat-val" id="s-twr">—</div><div class="stat-sub" id="s-twl">0W 0L</div></div>
+        <div class="stat-item"><div class="stat-label">LP Today</div><div class="stat-val" id="s-tlp">+0</div><div class="stat-sub">net gain</div></div>
+      </div>
+
+      <!-- Tab: Log game -->
+      <div class="tab-content" id="tc-log">
+        <div class="log-form">
+          <div class="fg ac-wrap">
+            <label>Result</label>
+            <input type="text" id="in-result" placeholder="Win or Loss…" style="width:105px" autocomplete="off" oninput="acResultInput(this.value)" onkeydown="acResultKey(event)" onblur="acResultBlur()"/>
+            <div class="ac-list" id="ac-result-list"></div>
+          </div>
+          <div class="fg"><label>LP change</label><input type="number" id="in-lp" placeholder="18 or -17" style="width:98px"/></div>
+          <div class="fg ac-wrap">
+            <label>Champion</label>
+            <input type="text" id="in-champ" placeholder="Jinx…" style="width:140px" autocomplete="off" oninput="acInput(this.value)" onkeydown="acKey(event)" onblur="acBlur()"/>
+            <div class="ac-list" id="ac-list"></div>
+          </div>
+          <div class="fg"><label>Note</label><input type="text" id="in-note" placeholder="optional…" style="width:185px"/></div>
+          <button class="add-btn" onclick="addGame()">+ Add game</button>
+        </div>
+        <div style="padding:2.5rem 28px;color:var(--text-muted);font-size:13px;text-align:center">Fill in the fields above and hit Add game</div>
+      </div>
+
+      <!-- Tab: Games -->
+      <div class="tab-content" id="tc-games" style="display:none">
+        <div class="col-header"><span>#</span><span>Result</span><span>LP ±</span><span>Rank</span><span>Champion</span><span>Note</span><span>Date</span><span>Time</span><span></span></div>
+        <div id="log-body"></div>
+      </div>
+
+      <!-- Tab: LP Graph -->
+      <div class="tab-content" id="tc-chart" style="display:none">
+        <div class="chart-wrap">
+          <canvas id="lp-chart"></canvas>
+          <div id="chart-empty" style="display:none;color:var(--text-muted);font-size:13px;text-align:center;padding-top:4rem">Log some games to see your LP graph</div>
+        </div>
+      </div>
+
+      <!-- Tab: Daily -->
+      <div class="tab-content" id="tc-daily" style="display:none">
+        <div class="daily-row header"><span>Date</span><span>Games</span><span>W</span><span>L</span><span>W/R</span><span>LP net</span></div>
+        <div id="daily-body"></div>
+      </div>
+    </div>
+  </div>
+      
+  </div>
+
+  <div id="note-tooltip"></div>
+  <!-- Settings modal -->
+  <div class="modal-overlay" id="settings-overlay" onclick="overlayClick(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Settings</span>
+        <button class="modal-close" onclick="closeSettings()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section-label">Data</div>
+        <button class="modal-btn" onclick="exportCSV()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+        <button class="modal-btn" onclick="importCSV()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Import CSV
+        </button>
+        <button class="modal-btn danger" onclick="clearAll()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          Reset all data
+        </button>
+        <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleImport(event)"/>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+  // Electron window controls
+  if (window.electronAPI) {
+    // On macOS, traffic lights are native — inject placeholder space
+    // On Windows/Linux, inject custom controls
+    const isMac = navigator.platform.toLowerCase().includes('mac');
+    if (!isMac) {
+      const dots = document.getElementById('titlebar-dots');
+      if (dots) {
+        dots.innerHTML = `
+          <button onclick="window.electronAPI.minimizeWindow()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:4px 8px;font-size:16px;line-height:1;-webkit-app-region:no-drag" title="Minimize">&#8722;</button>
+          <button onclick="window.electronAPI.toggleMaximizeWindow()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:4px 8px;font-size:12px;line-height:1;-webkit-app-region:no-drag" title="Maximize">&#9633;</button>
+          <button onclick="window.electronAPI.closeWindow()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:4px 8px;font-size:16px;line-height:1;-webkit-app-region:no-drag" title="Close" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='var(--text-muted)'">&#10005;</button>
+        `;
+      }
+    } else {
+      // macOS — leave space for native traffic lights
+      const dots = document.getElementById('titlebar-dots');
+      if (dots) dots.style.width = '70px';
+    }
+  } else {
+    // Fallback for browser — show fake dots
+    const dots = document.getElementById('titlebar-dots');
+    if (dots) {
+      dots.innerHTML = '<div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>';
+      dots.style.display = 'flex';
+      dots.style.gap = '8px';
+    }
+  }
+</script>
+<script>
+const RANKS=[['Iron IV',0],['Iron III',100],['Iron II',200],['Iron I',300],['Bronze IV',400],['Bronze III',500],['Bronze II',600],['Bronze I',700],['Silver IV',800],['Silver III',900],['Silver II',1000],['Silver I',1100],['Gold IV',1200],['Gold III',1300],['Gold II',1400],['Gold I',1500],['Platinum IV',1600],['Platinum III',1700],['Platinum II',1800],['Platinum I',1900],['Emerald IV',2000],['Emerald III',2100],['Emerald II',2200],['Emerald I',2300],['Diamond IV',2400],['Diamond III',2500],['Diamond II',2600],['Diamond I',2700],['Master',2800],['Grandmaster',2900],['Challenger',3000]];
+function getRank(lp){for(let i=RANKS.length-1;i>=0;i--)if(lp>=RANKS[i][1])return RANKS[i][0];return RANKS[0][0];}
+function getLPInDiv(lp){for(let i=RANKS.length-1;i>=0;i--)if(lp>=RANKS[i][1])return lp-RANKS[i][1];return lp;}
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function nowTime(){const d=new Date();return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
+
+let games=JSON.parse(localStorage.getItem('ct4_games')||'[]');
+let totalLP=parseInt(localStorage.getItem('ct4_lp')||'0');
+let chartInst=null, activeTab='log';
+
+function save(){localStorage.setItem('ct4_games',JSON.stringify(games));localStorage.setItem('ct4_lp',String(totalLP));}
+
+function updateStats(){
+  const t=today();let w=0,l=0,tw=0,tl=0,tlp=0;
+  games.forEach(g=>{g.result==='win'?w++:l++;if(g.date===t){g.result==='win'?tw++:tl++;tlp+=g.lp;}});
+  const tot=w+l,tt=tw+tl;
+  document.getElementById('s-lp').textContent=getLPInDiv(totalLP)+' LP';
+  document.getElementById('s-rank').textContent=getRank(totalLP);
+  document.getElementById('s-wr').textContent=tot?Math.round(w/tot*100)+'%':'—';
+  document.getElementById('s-wl').textContent=w+'W '+l+'L';
+  const wlr=document.getElementById('s-wl-rank');if(wlr)wlr.textContent=w+'W '+l+'L';
+  document.getElementById('s-twr').textContent=tt?Math.round(tw/tt*100)+'%':'—';
+  document.getElementById('s-twl').textContent=tw+'W '+tl+'L';
+  const el=document.getElementById('s-tlp');el.textContent=(tlp>=0?'+':'')+tlp;el.className='stat-val '+(tlp>=0?'c-win':'c-loss');
+  let streak=0;
+  if(games.length){streak=games[games.length-1].result==='win'?1:-1;for(let i=games.length-2;i>=0;i--){if(games[i].result==='win'&&streak>0)streak++;else if(games[i].result==='loss'&&streak<0)streak--;else break;}}
+}
+
+function renderLog(){
+  const body=document.getElementById('log-body');
+  document.getElementById('view-sub').textContent=games.length+' game'+(games.length!==1?'s':'');
+  if(!games.length){body.innerHTML='<div class="empty-row">No games yet — log your first one</div>';return;}
+  body.innerHTML=[...games].reverse().map((g,i)=>{
+    const gi=games.length-1-i,lps=(g.lp>=0?'+':'')+g.lp;
+    return`<div class="game-row ${g.result==='win'?'row-win':'row-loss'}"><span class="num">${gi+1}</span><span><span class="badge ${g.result==='win'?'b-win':'b-loss'}">${g.result}</span></span><span class="${g.lp>=0?'c-win':'c-loss'}">${lps}</span><span><span class="rank-pill">${g.rank}</span></span><span class="${g.champ?'':'c-mut'}">${g.champ||'—'}</span>${g.note?`<span class="c-mut note-cell" data-note="${g.note.replace(/"/g,'&quot;')}">${g.note}</span>`:`<span class="c-mut">—</span>`}<span class="c-mut">${g.date}</span><span class="c-mut">${g.time||'—'}</span><button class="del-btn" data-idx="${gi}">×</button></div>`;
+  }).join('');
+  body.querySelectorAll('.del-btn').forEach(btn=>{
+    btn.addEventListener('click',function(){delGame(parseInt(this.dataset.idx));});
+  });
+}
+
+function renderChart(){
+  const canvas=document.getElementById('lp-chart'),empty=document.getElementById('chart-empty');
+  if(!games.length){canvas.style.display='none';empty.style.display='block';return;}
+  canvas.style.display='block';empty.style.display='none';
+  if(chartInst)chartInst.destroy();
+  // Group by day — last totalLP of each day
+  const dayMap={};
+  games.forEach(g=>{dayMap[g.date]=g.totalLP;});
+  const days=Object.keys(dayMap).sort();
+  const dayLabels=days.map(d=>d.slice(5)); // MM-DD
+  const dayData=days.map(d=>dayMap[d]);
+  const dayColors=days.map(d=>{
+    const dayGames=games.filter(g=>g.date===d);
+    const last=dayGames[dayGames.length-1];
+    return last.result==='win'?'#4cd964':'#ff6b6b';
+  });
+  const minLP=Math.max(0,Math.min(...dayData)-100);
+  chartInst=new Chart(canvas,{type:'line',data:{labels:dayLabels,datasets:[{data:dayData,borderColor:'#5ac8fa',borderWidth:1.5,pointBackgroundColor:dayColors,pointBorderColor:dayColors,pointRadius:5,tension:0.35,fill:{target:'origin',above:'rgba(90,200,250,0.04)'}}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#2a2a2f',borderColor:'rgba(255,255,255,0.12)',borderWidth:1,titleFont:{family:'DM Mono',size:11},bodyFont:{family:'DM Mono',size:11},callbacks:{title:ctx=>days[ctx[0].dataIndex],label:ctx=>' '+getRank(ctx.parsed.y)+' — '+getLPInDiv(ctx.parsed.y)+' LP'}}},scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5a5a66',font:{family:'DM Mono',size:10}}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5a5a66',font:{family:'DM Mono',size:10},callback:function(val){const r=getRank(val);const lp=getLPInDiv(val);return r.padEnd(14)+String(lp).padStart(3)+' LP';}},min:minLP}}}});
+}
+
+function renderDaily(){
+  const map={};
+  games.forEach(g=>{if(!map[g.date])map[g.date]={w:0,l:0,lp:0};g.result==='win'?map[g.date].w++:map[g.date].l++;map[g.date].lp+=g.lp;});
+  const days=Object.keys(map).sort().reverse();
+  const body=document.getElementById('daily-body');
+  if(!days.length){body.innerHTML='<div class="empty-row">No data yet</div>';return;}
+  body.innerHTML=days.map(d=>{const{w,l,lp}=map[d],tot=w+l,wr=Math.round(w/tot*100),s=lp>=0?'+':'';return`<div class="daily-row"><span>${d}</span><span class="c-mut">${tot}</span><span class="c-win">${w}</span><span class="c-loss">${l}</span><span class="${wr>=50?'c-win':'c-loss'}">${wr}%</span><span class="${lp>=0?'c-win':'c-loss'}">${s}${lp}</span></div>`;}).join('');
+}
+
+function addGame(){
+  const resultRaw=document.getElementById('in-result').value.trim().toLowerCase(),result=resultRaw==='win'||resultRaw==='w'?'win':resultRaw==='loss'||resultRaw==='l'?'loss':null;if(!result){alert('Enter Win or Loss');return;}const raw=parseInt(document.getElementById('in-lp').value);
+  if(isNaN(raw)){alert('Enter the LP change (e.g. 18 or -17)');return;}
+  const lp=result==='loss'?(raw>0?-raw:raw):(raw<0?-raw:raw);
+  totalLP=Math.max(0,totalLP+lp);
+  games.push({result,lp,totalLP,rank:getRank(totalLP),champ:document.getElementById('in-champ').value.trim(),note:document.getElementById('in-note').value.trim(),date:today(),time:nowTime()});
+  save();
+  document.getElementById('in-result').value='';document.getElementById('in-lp').value='';document.getElementById('in-champ').value='';document.getElementById('in-note').value='';
+  updateStats();switchTab('games');
+}
+
+function delGame(idx){
+  games.splice(idx,1);let running=0;
+  games.forEach(g=>{running=Math.max(0,running+g.lp);g.totalLP=running;g.rank=getRank(running);});
+  totalLP=games.length?games[games.length-1].totalLP:0;
+  save();updateStats();renderLog();
+}
+
+const TITLES={log:'Log game',games:'Games',chart:'LP Graph',daily:'Daily'};
+const SUBS={log:'Add a new game to your climb',chart:'Your LP over time',daily:'Per-day breakdown'};
+
+function switchTab(name){
+  activeTab=name;
+  ['log','games','chart','daily'].forEach(n=>{
+    document.getElementById('tc-'+n).style.display=n===name?'block':'none';
+    document.getElementById('si-'+n).classList.toggle('active',n===name);
+  });
+  document.getElementById('view-title').textContent=TITLES[name]||name;
+  if(name==='chart'){renderChart();document.getElementById('view-sub').textContent=SUBS.chart;}
+  else if(name==='daily'){renderDaily();document.getElementById('view-sub').textContent=SUBS.daily;}
+  else if(name==='games'){renderLog();}
+  else{document.getElementById('view-sub').textContent=SUBS.log;}
+}
+
+
+const RESULTS=['Win','Loss'];
+let acResultIndex=-1;
+
+function acResultInput(val){
+  const list=document.getElementById('ac-result-list');
+  acResultIndex=-1;
+  if(!val.trim()){list.innerHTML='';list.classList.remove('open');return;}
+  const q=val.toLowerCase();
+  const matches=RESULTS.filter(r=>r.toLowerCase().startsWith(q));
+  if(!matches.length){list.innerHTML='';list.classList.remove('open');return;}
+  list.innerHTML=matches.map(r=>'<div class="ac-item" onmousedown="acResultPick(\'' + r + '\')">' + r + '</div>').join('');
+  list.classList.add('open');
+}
+
+function acResultPick(val){
+  document.getElementById('in-result').value=val;
+  document.getElementById('ac-result-list').classList.remove('open');
+  acResultIndex=-1;
+}
+
+function acResultBlur(){
+  setTimeout(()=>{document.getElementById('ac-result-list').classList.remove('open');acResultIndex=-1;},150);
+}
+
+function acResultKey(e){
+  const list=document.getElementById('ac-result-list');
+  const items=list.querySelectorAll('.ac-item');
+  if(e.key==='Tab'&&list.classList.contains('open')&&items.length){e.preventDefault();acResultPick(items[Math.max(acResultIndex,0)].dataset.val||items[Math.max(acResultIndex,0)].textContent);document.getElementById('in-lp').focus();return;}
+  if(!items.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();acResultIndex=Math.min(acResultIndex+1,items.length-1);items.forEach((el,i)=>el.classList.toggle('focused',i===acResultIndex));}
+  else if(e.key==='ArrowUp'){e.preventDefault();acResultIndex=Math.max(acResultIndex-1,0);items.forEach((el,i)=>el.classList.toggle('focused',i===acResultIndex));}
+  else if(e.key==='Enter'&&acResultIndex>=0){e.preventDefault();acResultPick(items[acResultIndex].dataset.val||items[acResultIndex].textContent);}
+  else if(e.key==='Escape'){list.classList.remove('open');acResultIndex=-1;}
+}
+
+
+const CHAMPS=["Aatrox","Ahri","Akali","Akshan","Alistar","Ambessa","Amumu","Anivia","Annie","Aphelios","Ashe","Aurelion Sol","Aurora","Azir","Bard","Bel'Veth","Blitzcrank","Brand","Braum","Briar","Caitlyn","Camille","Cassiopeia","Cho'Gath","Corki","Darius","Diana","Dr. Mundo","Draven","Ekko","Elise","Evelynn","Ezreal","Fiddlesticks","Fiora","Fizz","Galio","Gangplank","Garen","Gnar","Gragas","Graves","Gwen","Hecarim","Heimerdinger","Hwei","Illaoi","Irelia","Ivern","Janna","Jarvan IV","Jax","Jayce","Jhin","Jinx","K'Sante","Kai'Sa","Kalista","Karma","Karthus","Kassadin","Katarina","Kayle","Kayn","Kennen","Kha'Zix","Kindred","Kled","Kog'Maw","LeBlanc","Lee Sin","Leona","Lillia","Lissandra","Lucian","Lulu","Lux","Malphite","Malzahar","Maokai","Master Yi","Milio","Miss Fortune","Mordekaiser","Morgana","Naafiri","Nami","Nasus","Nautilus","Neeko","Nidalee","Nilah","Nocturne","Nunu & Willump","Olaf","Orianna","Ornn","Pantheon","Poppy","Pyke","Qiyana","Quinn","Rakan","Rammus","Rek'Sai","Rell","Renata Glasc","Renekton","Rengar","Riven","Rumble","Ryze","Samira","Sejuani","Senna","Seraphine","Sett","Shaco","Shen","Shyvana","Singed","Sion","Sivir","Skarner","Smolder","Sona","Soraka","Swain","Sylas","Syndra","Tahm Kench","Taliyah","Talon","Taric","Teemo","Thresh","Tristana","Trundle","Tryndamere","Twisted Fate","Twitch","Udyr","Urgot","Varus","Vayne","Veigar","Vel'Koz","Vex","Vi","Viego","Viktor","Vladimir","Volibear","Warwick","Wukong","Xayah","Xerath","Xin Zhao","Yasuo","Yone","Yorick","Yuumi","Zac","Zed","Zeri","Ziggs","Zilean","Zoe","Zyra"];
+
+let acIndex=-1;
+
+function acInput(val){
+  const list=document.getElementById('ac-list');
+  acIndex=-1;
+  if(!val.trim()){list.innerHTML='';list.classList.remove('open');return;}
+  const q=val.toLowerCase();
+  const matches=CHAMPS.filter(c=>c.toLowerCase().includes(q)).slice(0,8);
+  if(!matches.length){list.innerHTML='';list.classList.remove('open');return;}
+  list.innerHTML=matches.map((c,i)=>{
+    const safe=c.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    return '<div class="ac-item" onmousedown="acPick(this.dataset.val)" data-val="'+safe+'">'+c+'</div>';
+  }).join('');
+  list.classList.add('open');
+}
+
+function acPick(val){
+  document.getElementById('in-champ').value=val;
+  document.getElementById('ac-list').classList.remove('open');
+  acIndex=-1;
+}
+
+function acBlur(){
+  setTimeout(()=>{document.getElementById('ac-list').classList.remove('open');acIndex=-1;},150);
+}
+
+function acKey(e){
+  const list=document.getElementById('ac-list');
+  const items=list.querySelectorAll('.ac-item');
+  if(e.key==='Tab'&&list.classList.contains('open')&&items.length){e.preventDefault();acPick(items[Math.max(acIndex,0)].dataset.val);document.getElementById('in-note').focus();return;}
+  if(!items.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();acIndex=Math.min(acIndex+1,items.length-1);items.forEach((el,i)=>el.classList.toggle('focused',i===acIndex));}
+  else if(e.key==='ArrowUp'){e.preventDefault();acIndex=Math.max(acIndex-1,0);items.forEach((el,i)=>el.classList.toggle('focused',i===acIndex));}
+  else if(e.key==='Enter'&&acIndex>=0){e.preventDefault();acPick(items[acIndex].dataset.val);}
+  else if(e.key==='Escape'){list.classList.remove('open');acIndex=-1;}
+}
+
+
+function openSettings(){ document.getElementById('settings-overlay').classList.add('open'); }
+function closeSettings(){ document.getElementById('settings-overlay').classList.remove('open'); }
+function overlayClick(e){ if(e.target===document.getElementById('settings-overlay')) closeSettings(); }
+
+function importCSV(){
+  document.getElementById('csv-import-input').click();
+}
+
+function handleImport(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const lines = ev.target.result.split('\n').filter(l=>l.trim());
+    let imported = 0;
+    // skip header row
+    for(let i=1;i<lines.length;i++){
+      const cols = lines[i].split(',').map(c=>c.replace(/^"|"$/g,'').trim());
+      if(cols.length < 4) continue;
+      const result = cols[1]==='win'||cols[1]==='Win'?'win':'loss';
+      const lp = parseInt(cols[2]);
+      const tlp = parseInt(cols[3]);
+      if(isNaN(lp)||isNaN(tlp)) continue;
+      games.push({
+        result, lp, totalLP:tlp,
+        rank: cols[4]||getRank(tlp),
+        champ: cols[5]||'',
+        note: cols[6]||'',
+        date: cols[7]||today(),
+        time: cols[8]||''
+      });
+      imported++;
+    }
+    if(imported>0){
+      totalLP = games[games.length-1].totalLP;
+      save(); refresh();
+      closeSettings();
+      alert(imported+' games imported.');
+    } else {
+      alert('No valid rows found in CSV.');
+    }
+    e.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+// Floating note tooltip
+document.addEventListener('mouseover', function(e) {
+  const cell = e.target.closest('.note-cell');
+  const tip = document.getElementById('note-tooltip');
+  if (cell && cell.dataset.note) {
+    tip.textContent = cell.dataset.note;
+    tip.style.display = 'block';
+  } else {
+    tip.style.display = 'none';
+  }
+});
+document.addEventListener('mousemove', function(e) {
+  const tip = document.getElementById('note-tooltip');
+  if (tip.style.display === 'block') {
+    const x = e.clientX + 14;
+    const y = e.clientY - 10;
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    tip.style.left = (x + tw > window.innerWidth ? e.clientX - tw - 10 : x) + 'px';
+    tip.style.top = (y + th > window.innerHeight ? e.clientY - th - 10 : y) + 'px';
+  }
+});
+document.addEventListener('mouseout', function(e) {
+  if (e.target.closest && e.target.closest('.note-cell')) {
+    document.getElementById('note-tooltip').style.display = 'none';
+  }
+});
+
+
+function exportCSV(){
+  if(!games.length){alert('No games to export');return;}
+  const rows=[['#','Result','LP','Total LP','Rank','Champion','Note','Date','Time']];
+  games.forEach((g,i)=>rows.push([i+1,g.result,g.lp,g.totalLP,g.rank,g.champ||'',g.note||'',g.date,g.time||'']));
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n'));
+  a.download='climb-tracker.csv';a.click();
+}
+
+function clearAll(){
+  if(!confirm('Reset ALL data?'))return;
+  games=[];totalLP=0;localStorage.removeItem('ct4_games');localStorage.removeItem('ct4_lp');
+  updateStats();renderLog();
+}
+
+updateStats();
+
+  // Electron window controls
+  if (window.electronAPI) {
+    // On macOS, traffic lights are native — inject placeholder space
+    // On Windows/Linux, inject custom controls
+    const isMac = navigator.platform.toLowerCase().includes('mac');
+    if (!isMac) {
+      const dots = document.getElementById('titlebar-dots');
+      if (dots) {
+        dots.innerHTML = `
+          <button onclick="window.electronAPI.minimizeWindow()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:4px 8px;font-size:16px;line-height:1;-webkit-app-region:no-drag" title="Minimize">&#8722;</button>
+          <button onclick="window.electronAPI.toggleMaximizeWindow()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:4px 8px;font-size:12px;line-height:1;-webkit-app-region:no-drag" title="Maximize">&#9633;</button>
+          <button onclick="window.electronAPI.closeWindow()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:4px 8px;font-size:16px;line-height:1;-webkit-app-region:no-drag" title="Close" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='var(--text-muted)'">&#10005;</button>
+        `;
+      }
+    } else {
+      // macOS — leave space for native traffic lights
+      const dots = document.getElementById('titlebar-dots');
+      if (dots) dots.style.width = '70px';
+    }
+  } else {
+    // Fallback for browser — show fake dots
+    const dots = document.getElementById('titlebar-dots');
+    if (dots) {
+      dots.innerHTML = '<div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>';
+      dots.style.display = 'flex';
+      dots.style.gap = '8px';
+    }
+  }
+</script>
+</body>
+</html>
